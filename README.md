@@ -27,7 +27,7 @@ Example:
 |     Item 1.2 |   1.0 |
 ```
 
-1. Add pdf file to data folder (ex: ./data/Sample 1.pdf) 
+1. Add pdf file to data folder (ex: data/Sample 1.pdf) 
 
 2. Review script parameters
 

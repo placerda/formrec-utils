@@ -17,7 +17,7 @@ pip install -r requirements.txt
 ## Parse table
 
 Parse table script (parse_table.py) extract tables with hierarchical items.
-
+ 
 Example:
 ```
 | Items        | Value |

@@ -1,4 +1,4 @@
-# How to Execute
+## Setup
 
 1. Update .env file in source folder with your own credentials
 
@@ -14,9 +14,9 @@ FORM_RECOGNIZER_KEY=[YOUR_KEY]
 pip install -r requirements.txt
 ```
 
-3. Parse table utility: (parse_table.py)
+## Parse table
 
-Extract tables with hierarchical items.
+Parse table script (parse_table.py) extract tables with hierarchical items.
 
 Example:
 ```
@@ -27,9 +27,9 @@ Example:
 |     Item 1.2 |   1.0 |
 ```
 
-3.1. Add pdf file to data folder (ex: ./data/Sample 1.pdf) 
+1. Add pdf file to data folder (ex: ./data/Sample 1.pdf) 
 
-3.2. Review script parameters
+2. Review script parameters
 
 parse_table.py:
 ```
@@ -42,7 +42,7 @@ THRESHOLD = 0.05 (minimum indent width)
 IGNORE_LIST = ["Subtotal"] (rows to ignore)
 ```
 
-3.3. Execute the script
+3. Execute the script
 
 ```
 python ./source/parse_table.py

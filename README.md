@@ -33,13 +33,13 @@ Example:
 
 parse_table.py:
 ```
-INPUT_FILE  = "data/Sample 1.pdf" (input file name)
+INPUT_FILE  = "data/Sample 1.pdf" # input file name
 ```
 
 parse_table_utils.py:
 ```
-THRESHOLD = 0.05 (minimum indent width)
-IGNORE_LIST = ["Subtotal"] (rows to ignore)
+THRESHOLD = 0.05 # minimum indent width
+IGNORE_LIST = ["Subtotal"] # rows to ignore
 ```
 
 3. Execute the script

@@ -6,7 +6,7 @@ from dotenv import load_dotenv, find_dotenv
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.formrecognizer import DocumentAnalysisClient
 
-INPUT_FILE  = "data/Sample 1.pdf"
+INPUT_FILE  = "data/Sample 6.pdf"
 
 # connect to service
 load_dotenv(find_dotenv())

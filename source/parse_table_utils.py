@@ -1,10 +1,20 @@
-import json, re
+import re
 import pandas as pd
+
+## General functions ##
+''' return empty string if the item is not found in a collection '''
+def get_item_value(item, column):
+    try:
+        return item[column]
+    except KeyError:
+        return ''
+
 
 ### Functions to create items in tree structure (sub-group hierarchy) ###
 
 THRESHOLD = 0.05 # Fine tune the indent size accordingly the documents used.
-IGNORE_LIST = ["Subtotal"] # Ignore these items when creating the tree structure
+IGNORE_ITEMS_LIST = [] # Ignore these items when creating the tree structure. Example IGNORE_ITEMS_LIST = ["Subtotal", "Total"]
+MUST_HAVE_COLUMNS = [] # Must have these columns filled to be included in the dataframe. Example: MUST_HAVE_COLUMNS = ["Impl"]
 
 ''' get the x coordinate of a cell '''
 def get_x(pages, content, span_offset, span_length):
@@ -12,7 +22,7 @@ def get_x(pages, content, span_offset, span_length):
     for page in pages:
         lines = page.lines
         for line in lines:
-            if line.content == content and line.spans[0].offset == span_offset and line.spans[0].length == span_length:
+            if line.content in content and line.spans[0].offset == span_offset: # and line.spans[0].length == span_length:
                 x = line.polygon[0].x
                 break
     return x
@@ -84,12 +94,42 @@ def contains(content, list):
             return True
     return False
 
+''' rename duplicate columns '''
+def rename_duplicate_columns(table):
+    columns = {}
+    for cell in table.cells:
+        content = cell.content
+        rowIndex = cell.row_index
+        columnIndex = cell.column_index
+        kind = cell.kind
+        if kind == 'columnHeader':
+            existing_column_index = get_item_value(columns, content)    
+            if existing_column_index == '':
+                occurrences = [(rowIndex, columnIndex)]
+                columns[content] = occurrences
+            elif (rowIndex, columnIndex) not in existing_column_index:
+                existing_column_index.append((rowIndex, columnIndex))
+    for cell in table.cells:
+        content = cell.content
+        rowIndex = cell.row_index
+        columnIndex = cell.column_index
+        kind = cell.kind
+        if kind == 'columnHeader':
+            existing_column_index = get_item_value(columns, content)
+            for idx in range(len(existing_column_index)):
+                if existing_column_index[idx][0] == rowIndex and existing_column_index[idx][1] == columnIndex:
+                    break  
+            if idx > 0:
+                cell.content = cell.content + str(idx)
+    return table
+
 ''' parse the json result and create the tree structure '''
 def parse_json_result(data):
     trees = []
     pages = data.pages
     tables = data.tables    
     for table in tables:
+        table = rename_duplicate_columns(table)
         nodes = []
         headers = []
         for cell in table.cells:
@@ -105,7 +145,7 @@ def parse_json_result(data):
                     'columnIndex': columnIndex
                 })
             # identify content nodes               
-            elif cell.column_index == 0 and len(cell.spans) > 0 and not contains(cell.content, IGNORE_LIST):
+            elif cell.column_index == 0 and len(cell.spans) > 0 and not contains(cell.content, IGNORE_ITEMS_LIST):
                 node = {}
                 node['content'] = cell.content
                 node['rowIndex'] = rowIndex
@@ -125,6 +165,7 @@ def parse_json_result(data):
         trees.append(nodes)
     return trees
 
+
 ### Functions to convert tree structure to a dataframe ###
 
 ''' get the max height of the tree structure '''
@@ -141,22 +182,37 @@ def get_items_list(tree, curr_level, prefilled_item, levels, value_columns):
     for node in tree:
         item = prefilled_item.copy()
         item[levels[curr_level]] = node['content']
+        # add current item to the list (leaf node)
+        for column in value_columns:
+            try:
+                item[column] = node[column]
+            except KeyError:
+                item[column] = ''
+        # check if it has required columns then append to the list
+        if all(get_item_value(item, column) != '' for column in MUST_HAVE_COLUMNS):
+            list.append(item)
         if len(node['childs']) > 0:
             list = list + get_items_list(node['childs'], curr_level+1, item, levels, value_columns)
-        else:
-            # add current item to the list (leaf node)
-            for column in value_columns:
-                item[column] = node[column]
-            list.append(item)            
     return list
+
+''' get tree first column name '''
+def get_first_column_name(tree):
+    first_element = tree[0]
+    for key in first_element.keys():
+        if first_element[key] == first_element['content'] and key != 'content':
+            first_column_name = key
+            break
+    return first_column_name
 
 ''' convert a tree to a dataframe '''	
 def get_dataframe(tree):
-    levels = ["Level " + str(i+1) for i in range(0, get_height(tree))]
+    if len(tree) == 0:
+        return pd.DataFrame()
+    first_column_name = get_first_column_name(tree)
+    levels = [first_column_name] + [first_column_name + str(i+1) for i in range(0, get_height(tree)-1)]
     control_attributes = ['content', 'rowIndex', 'span_offset', 'span_length', 'childs']
     value_columns = [column for column in tree[0].keys() if column not in levels + control_attributes]
     columns = levels + value_columns
     items_list = get_items_list(tree, 0, {}, levels, value_columns)    
     df = pd.DataFrame(items_list, columns=columns)
     return df
-

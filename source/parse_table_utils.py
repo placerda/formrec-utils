@@ -4,7 +4,7 @@ import pandas as pd
 ## Global variables ##
 
 THRESHOLD = 0.05 # Fine tune the indent size accordingly the documents used.
-IGNORE_ITEMS_LIST = [] # Ignore items starting with these keywords when creating the tree structure. Example IGNORE_ITEMS_LIST = ["Subtotal", "Total"]
+IGNORE_ITEMS_LIST = [] # Ignore items containing these keywords when creating the tree structure. Example IGNORE_ITEMS_LIST = ["Subtotal", "Total"]
 MUST_HAVE_COLUMNS = [] # Must have these columns filled to be included in the dataframe. Example: MUST_HAVE_COLUMNS = ["Impl"]
 
 ## General functions ##

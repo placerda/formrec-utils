@@ -1,7 +1,14 @@
 import re
 import pandas as pd
 
+## Global variables ##
+
+THRESHOLD = 0.05 # Fine tune the indent size accordingly the documents used.
+IGNORE_ITEMS_LIST = [] # Ignore items starting with these keywords when creating the tree structure. Example IGNORE_ITEMS_LIST = ["Subtotal", "Total"]
+MUST_HAVE_COLUMNS = [] # Must have these columns filled to be included in the dataframe. Example: MUST_HAVE_COLUMNS = ["Impl"]
+
 ## General functions ##
+
 ''' return empty string if the item is not found in a collection '''
 def get_item_value(item, column):
     try:
@@ -9,12 +16,7 @@ def get_item_value(item, column):
     except KeyError:
         return ''
 
-
 ### Functions to create items in tree structure (sub-group hierarchy) ###
-
-THRESHOLD = 0.05 # Fine tune the indent size accordingly the documents used.
-IGNORE_ITEMS_LIST = [] # Ignore these items when creating the tree structure. Example IGNORE_ITEMS_LIST = ["Subtotal", "Total"]
-MUST_HAVE_COLUMNS = [] # Must have these columns filled to be included in the dataframe. Example: MUST_HAVE_COLUMNS = ["Impl"]
 
 ''' get the x coordinate of a cell '''
 def get_x(pages, content, span_offset, span_length):
@@ -67,16 +69,15 @@ def remove_line_breaks(content):
 
 ''' populate the node with attribute values '''
 def add_values(cells, rowIndex, headers, node):
-    # find number of columns
-    num_columns = 0
+    # find column indexes
+    column_indexes = set([])
     for header in headers:
-        if header['columnIndex'] > num_columns:
-            num_columns = header['columnIndex']
-
-    columns = []
-
+        column_indexes.add(header['columnIndex'])
+    column_indexes = list(column_indexes)
+    
     # find header row by looking for the closest header above the current row for each column
-    for column_i in range(0, num_columns):
+    columns = []
+    for column_i in column_indexes:
         current_distance = 1000000
         for header in headers:
             rowDistance = rowIndex - header['rowIndex']
@@ -174,7 +175,6 @@ def parse_json_result(data):
                     add_child(nodes, parent, node)
         trees.append(nodes)
     return trees
-
 
 ### Functions to convert tree structure to a dataframe ###
 

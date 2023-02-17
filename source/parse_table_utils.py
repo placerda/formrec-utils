@@ -67,18 +67,28 @@ def remove_line_breaks(content):
 
 ''' populate the node with attribute values '''
 def add_values(cells, rowIndex, headers, node):
-    # find header row by looking for the closest header above the current row
-    current_distance = 1000000
+    # find number of columns
+    num_columns = 0
     for header in headers:
-        rowDistance = rowIndex - header['rowIndex']
-        if rowDistance < current_distance and rowDistance > 0 and header['content'] != '':
-            headerRowIndex = header['rowIndex']
-            current_distance = rowDistance
-    # define attributes names
+        if header['columnIndex'] > num_columns:
+            num_columns = header['columnIndex']
+
     columns = []
-    for header in headers:
-        if headerRowIndex == header['rowIndex'] and header['content'] != '':
-            columns.append(header)
+
+    # find header row by looking for the closest header above the current row for each column
+    for column_i in range(0, num_columns):
+        current_distance = 1000000
+        for header in headers:
+            rowDistance = rowIndex - header['rowIndex']
+            if column_i == header['columnIndex'] and rowDistance < current_distance and rowDistance > 0 and header['content'] != '':
+                headerRowIndex = header['rowIndex']
+                current_distance = rowDistance
+
+        # define attributes names
+        for header in headers:
+            if column_i == header['columnIndex'] and headerRowIndex == header['rowIndex'] and header['content'] != '':
+                columns.append(header)
+
     # fill attribute values
     for cell in cells:
         if cell.row_index == rowIndex:
@@ -197,6 +207,7 @@ def get_items_list(tree, curr_level, prefilled_item, levels, value_columns):
 
 ''' get tree first column name '''
 def get_first_column_name(tree):
+    first_column_name = ""
     first_element = tree[0]
     for key in first_element.keys():
         if first_element[key] == first_element['content'] and key != 'content':
@@ -206,8 +217,7 @@ def get_first_column_name(tree):
 
 ''' convert a tree to a dataframe '''	
 def get_dataframe(tree):
-    if len(tree) == 0:
-        return pd.DataFrame()
+    if len(tree) == 0: return pd.DataFrame()
     first_column_name = get_first_column_name(tree)
     levels = [first_column_name] + [first_column_name + str(i+1) for i in range(0, get_height(tree)-1)]
     control_attributes = ['content', 'rowIndex', 'span_offset', 'span_length', 'childs']

@@ -1,11 +1,18 @@
 ## Setup
 
-1. Update .env file in source folder with your own credentials
+1. Update .env file in source folder with your own credentials (use .env.template as a reference)
 
 ```
 FORM_RECOGNIZER_ENDPOINT=https://[FORM_RESOURCE_NAME].cognitiveservices.azure.com/
 
 FORM_RECOGNIZER_KEY=[YOUR_KEY]
+
+AZURE_OPENAI_SERVICE=[AZURE OPENAI SERVICE NAME]
+
+AZURE_OPENAI_GPT_DEPLOYMENT=[AZURE OPENAI DAVINCI 3.0 MODEL DEPLOYMENT NAME]
+
+AZURE_OPENAI_KEY=[AZURE OPENAI SERVICE KEY]
+
 ```
 
 2. Update environment

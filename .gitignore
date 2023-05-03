@@ -1,10 +1,10 @@
 # project specific
 data/
+backup/
 .vscode/
 notes.txt
-temp.txt
 teste*.py
-backup/
+__azurite*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

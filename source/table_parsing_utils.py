@@ -4,7 +4,6 @@ Author: Paulo Lacerda
 Description: Utility functions to parse tables from PDFs
 
 """
-import os
 import re
 import pandas as pd
 import azure_openai_utils

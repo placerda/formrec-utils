@@ -2,6 +2,9 @@
 data/
 .vscode/
 notes.txt
+temp.txt
+teste*.py
+backup/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

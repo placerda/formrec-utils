@@ -1,0 +1,7 @@
+Considering the following table with service descriptions and its fees define a better name for column '{column_name}'
+The table can not have duplicated column names
+
+{table}
+
+Old column name: {column_name}
+New column name:

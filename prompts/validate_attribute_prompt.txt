@@ -1,0 +1,40 @@
+Below is a cell value and its column name.
+Cell values must be defined exactly as one of the following categories:
+- valid
+- invalid
+- dont_know
+Column values starting with Description and TBD are always valid
+###
+column name: 
+"name"
+cell value: 
+"Walt Disney"
+category:
+valid
+###
+column name: 
+"1 = Yes or Estimated Volume"
+cell value: 
+"50"
+category:
+valid
+###
+column name: 
+"1 = Yes or Estimated Volume"
+cell value: 
+"1"
+category:
+valid
+###
+column name: 
+"Total Impl Investment"
+cell value: 
+"$50.00"
+category:
+valid
+###
+column name: 
+"{column_name}"
+cell value: 
+"{value}"
+category:

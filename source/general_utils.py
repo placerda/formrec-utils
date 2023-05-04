@@ -1,3 +1,9 @@
+"""
+Title: General Utility Functions
+Author: Paulo Lacerda
+Description: Utility functions to use in other scripts
+
+"""
 import logging
 
 ## LOGGER CONFIGURATION ##

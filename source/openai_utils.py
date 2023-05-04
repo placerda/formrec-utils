@@ -1,8 +1,14 @@
+"""
+Title: Azure OpenAI Utils
+Author: Paulo Lacerda
+Description: Utility functions to use Azure OpenAI API
+
+"""
 import openai
 import tiktoken
 import time
 import os
-from utils import logger
+from general_utils import logger
 
 ## Global variables ##
 

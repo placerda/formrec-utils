@@ -6,20 +6,19 @@ Description: Utility functions to parse tables from PDFs
 """
 import re
 import pandas as pd
-import azure_openai_utils
-from utils import logger
+import openai_utils as openai_utils
+from general_utils import logger
 
 ## Global variables ##
 
-PARENT_INDENT_THRESHOLD = 0.05 # Fine tune the indent size accordingly the documents used.
+PARENT_INDENT_THRESHOLD = 0.045 # Fine tune the parent-child indent size.
+MERGE_TABLES_THRESHOLD = 1.00 # Fine tune the threshold to merge tables same page.
 IGNORE_ITEMS_LIST = [] # Ignore items containing these keywords when creating the tree structure. Example IGNORE_ITEMS_LIST = ["Subtotal", "Total"]
 MUST_HAVE_COLUMNS = [] # Must have these columns filled to be included in the dataframe. Example: MUST_HAVE_COLUMNS = ["Impl"]
 RESERVED_ATTRIBUTES = ['content', 'rowIndex', 'span_offset', 'span_length', 'children', 'styles']
 
-VALIDATE_ATTRIBUTE_PROMPT = open("prompts/validate_attribute_prompt.txt", "r").read()
-INFER_COLUMN_NAME_PROMPT = open("prompts/infer_column_name.txt", "r").read()
-
-
+VALIDATE_ATTRIBUTE_PROMPT = open("prompts/parse_tables_validate_attribute_prompt.txt", "r").read()
+INFER_COLUMN_NAME_PROMPT = open("prompts/parse_tables_infer_services_table_column_name.txt", "r").read()
 
 ## General functions ##
 
@@ -99,6 +98,22 @@ def add_missing_headers(cells, headers, rowIndex, columnIndex):
                     'columnIndex': cell['columnIndex']
                 })
     return _headers
+
+''' quick fix for the case where first header row cell has and empty value'''
+def fix_header_cells(headers):
+    headers = headers.copy()
+    for header in headers:
+        if header['content'] in ('1', '2', '3', '4', '5', '6', '7', '8', '9', '10'):
+            header['content'] = ''
+
+    new_headers = []
+    for idx, header in enumerate(headers):
+        if header['content'] == '' and header['columnIndex'] == 0:
+            if headers[idx+1]['rowIndex'] == header['rowIndex']:
+                header['content'] = headers[idx+1]['content']
+                headers[idx+1]['content'] = ''
+        new_headers.append(header)
+    return new_headers
 
 ''' populate the node with attribute values '''
 def add_values(cells, rowIndex, headers, node):
@@ -199,7 +214,7 @@ def is_a_valid_node(node):
         elif (key.startswith('TBD')):
             continue
         else:
-            validation = azure_openai_utils.complete(VALIDATE_ATTRIBUTE_PROMPT, {'column_name': key, 'value': node[key]}).strip().lower()            
+            validation = openai_utils.complete(VALIDATE_ATTRIBUTE_PROMPT, {'column_name': key, 'value': node[key]}).strip().lower()            
             invalid = True if validation == "invalid" else False
             if invalid:
                 logger.debug(f"Invalid node '{truncate(node['content'],20)}'. Invalid value '{truncate(node[key],20)}' to '{truncate(key,20)}' column")
@@ -231,7 +246,7 @@ def load_tables(tables):
             last_bounding_region = last_table['boundingRegions'][-1]
             current_bounding_region = table['boundingRegions'][0]
             if last_bounding_region['pageNumber'] == current_bounding_region['pageNumber']:
-                if last_bounding_region['polygon'][5] - current_bounding_region['polygon'][1] < 1.0:
+                if last_bounding_region['polygon'][5] - current_bounding_region['polygon'][1] < MERGE_TABLES_THRESHOLD:
                     same_table = True
             if same_table:
                 # merge tables
@@ -279,7 +294,6 @@ def load_tables(tables):
 ''' parse the json result and create the tree structure '''
 def parse_json_result(data):
     trees = [] 
-    # tables = data['tables']
     tables = load_tables(data['tables'])
     pages = data['pages']
     for idx, table in enumerate(tables):
@@ -294,12 +308,13 @@ def parse_json_result(data):
             columnIndex = cell['columnIndex']
             kind = cell['kind'] if 'kind' in cell else 'content' # (default)
             # identify headers to populate attributes later
-            if kind == 'columnHeader':    
-                headers.append({
+            if kind == 'columnHeader':
+                header = {
                     'content': content,
                     'rowIndex': rowIndex,
                     'columnIndex': columnIndex
-                })
+                }
+                headers.append(header)
             # identify content nodes               
             elif cell['columnIndex'] == 0 and len(cell['spans']) > 0 and not contains(cell['content'], IGNORE_ITEMS_LIST):
                 node = {}
@@ -312,7 +327,12 @@ def parse_json_result(data):
 
                 # create new headers when needed to avoid tables with no header issue
                 headers = add_missing_headers(table['cells'], headers, rowIndex, columnIndex)
-                
+
+                # sometimes FR results are coming with header row with its first cell with no content.
+                # other times they come with ordinal numbers like 1, 2, 3.
+                # this behavior creates an issue when adding values to the node so need to fix it.
+                headers = fix_header_cells(headers)
+
                 # populate nodes values 
                 add_values(table['cells'], rowIndex, headers, node)
                 
@@ -386,7 +406,7 @@ def markdown_table(df):
 
 def infer_column_name(column, df):
     column_name = ""
-    column_name = azure_openai_utils.complete(INFER_COLUMN_NAME_PROMPT, {'column_name': column, 'table': markdown_table(df)}).strip() 
+    column_name = openai_utils.complete(INFER_COLUMN_NAME_PROMPT, {'column_name': column, 'table': markdown_table(df)}).strip() 
     if column_name != "":
         logger.debug(f"Inferred '{column}' name as '{column_name}'")
     else:
@@ -398,9 +418,14 @@ def infer_column_name(column, df):
 def remove_empty_columns(df, columns):
     dataframe = df.copy()
     for column in dataframe.columns:
-        if column in columns and dataframe[column].isnull().all():
-            logger.debug(f"Removing column '{column}'. It has no values")
-            dataframe.drop(column, axis=1, inplace=True)
+        if (column in columns or column.startswith('TBD')):
+            remove = True            
+            for dado in dataframe[column]: 
+                if dado != None and str(dado).strip() != '':
+                    remove = False
+            if remove:
+                logger.debug(f"Removing column '{column}'. It has no values")
+                dataframe.drop(column, axis=1, inplace=True)
     return dataframe
 
 ''' convert a tree to a dataframe '''	
@@ -415,7 +440,7 @@ def get_dataframe(tree):
     items_list = get_items_list(tree, 0, {}, levels, value_columns)
     df = pd.DataFrame(items_list, columns=columns)
 
-    # clean levels columns with no value (may be generated by empty/invalid nodes)
+    # clean levels and TBD columns with no value (may be generated by empty/invalid nodes)
     df = remove_empty_columns(df, levels)
 
     # infer TBD column names
